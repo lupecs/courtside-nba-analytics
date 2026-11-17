@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import TeamLogo from "./components/TeamLogo";
 
 import Plot from "react-plotly.js";
 
@@ -736,7 +737,14 @@ function App() {
                         <>
                           <div className="era-summary-card">
                             <span className="eyebrow">TOP ERA STRENGTH</span>
-                            <h3>{strongestTeam.TEAM_NAME}</h3>
+                            <h3 className="team-name-with-logo">
+                              {strongestTeam.TEAM_NAME}
+                              <TeamLogo
+                                teamId={strongestTeam.TEAM_ID}
+                                teamName={strongestTeam.TEAM_NAME}
+                                season={eraSeason}
+                              />
+                            </h3>
                             <strong>
                               {strongestTeam.ERA_STRENGTH.toFixed(2)}
                             </strong>
@@ -745,14 +753,28 @@ function App() {
 
                           <div className="era-summary-card">
                             <span className="eyebrow">BEST OFFENSE</span>
-                            <h3>{bestOffense.TEAM_NAME}</h3>
+                            <h3 className="team-name-with-logo">
+                              {bestOffense.TEAM_NAME}
+                              <TeamLogo
+                                teamId={bestOffense.TEAM_ID}
+                                teamName={bestOffense.TEAM_NAME}
+                                season={eraSeason}
+                              />
+                            </h3>
                             <strong>{bestOffense.PTS_INDEX.toFixed(2)}</strong>
                             <p>Highest scoring index</p>
                           </div>
 
                           <div className="era-summary-card">
                             <span className="eyebrow">BEST DEFENSE</span>
-                            <h3>{bestDefense.TEAM_NAME}</h3>
+                            <h3 className="team-name-with-logo">
+                              {bestDefense.TEAM_NAME}
+                              <TeamLogo
+                                teamId={bestDefense.TEAM_ID}
+                                teamName={bestDefense.TEAM_NAME}
+                                season={eraSeason}
+                              />
+                            </h3>
                             <strong>{bestDefense.DEF_INDEX.toFixed(2)}</strong>
                             <p>Highest defensive index</p>
                           </div>
@@ -936,7 +958,16 @@ function App() {
                         {eraPerformance.map((team, index) => (
                           <tr key={team.TEAM_ID}>
                             <td>{index + 1}</td>
-                            <td className="team-name">{team.TEAM_NAME}</td>
+                            <td className="team-name">
+                              <span className="team-name-with-logo">
+                                {team.TEAM_NAME}
+                                <TeamLogo
+                                  teamId={team.TEAM_ID}
+                                  teamName={team.TEAM_NAME}
+                                  season={eraSeason}
+                                />
+                              </span>
+                            </td>
                             <td>{team.PTS_INDEX.toFixed(2)}</td>
                             <td>{team.DEF_INDEX.toFixed(2)}</td>
                             <td className="era-strength-value">
@@ -1048,7 +1079,16 @@ function App() {
                       {teamPerformance.map((team, index) => (
                         <tr key={team.TEAM_ID}>
                           <td className="standings-rank">{index + 1}</td>
-                          <td className="standings-team">{team.TEAM_NAME}</td>
+                          <td className="standings-team">
+                            <span className="team-name-with-logo">
+                              {team.TEAM_NAME}
+                              <TeamLogo
+                                teamId={team.TEAM_ID}
+                                teamName={team.TEAM_NAME}
+                                season={selectedSeason}
+                              />
+                            </span>
+                          </td>
                           <td>{team.GP}</td>
                           <td>{team.W}</td>
                           <td>{team.L}</td>
@@ -1111,6 +1151,14 @@ function App() {
               >
                 Logan Weaver / Unsplash
               </a>
+            </div>
+            <div className="asset-credits logo-disclaimer">
+              NBA team names, logos, and related marks are trademarks and/or
+              copyrighted property of the NBA and their respective teams. Logos
+              are displayed for educational, informational, and portfolio
+              purposes only. Courtside NBA Analytics is an independent,
+              unofficial project and is not affiliated with or endorsed by the
+              NBA or any NBA team.
             </div>
           </footer>
         </div>
