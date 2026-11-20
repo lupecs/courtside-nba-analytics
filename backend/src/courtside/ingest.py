@@ -68,6 +68,9 @@ def validate_game_logs(
 
     df["SEASON"] = season
 
+    if not df["SEASON"].eq(season).all():
+        raise ValueError(f"Unexpected season values found for {season}.")
+
     if df["GAME_ID"].isna().any():
         raise ValueError("Null game IDs found.")
 
@@ -80,8 +83,29 @@ def validate_game_logs(
     if df.duplicated(["GAME_ID", "TEAM_ID"]).any():
         raise ValueError("Duplicate game/team records found.")
 
-    if not df["WL"].isin(["W", "L"]).all():
-        raise ValueError("Unexpected game outcome values.")
+    df["GAME_STATUS"] = "COMPLETED"
+
+    for game_id, game_rows in df.groupby("GAME_ID", sort=False):
+        if game_rows["WL"].isin(["W", "L"]).all():
+            continue
+
+        is_unplayed = (
+            len(game_rows) == 2
+            and game_rows["TEAM_ID"].nunique() == 2
+            and game_rows["GAME_DATE"].nunique() == 1
+            and game_rows["WL"].isna().all()
+            and pd.to_numeric(
+                game_rows["PTS"], errors="coerce"
+            ).eq(0).all()
+            and pd.to_numeric(
+                game_rows["MIN"], errors="coerce"
+            ).eq(0).all()
+        )
+
+        if not is_unplayed:
+            raise ValueError("Unexpected game outcome values.")
+
+        df.loc[game_rows.index, "GAME_STATUS"] = "UNPLAYED"
 
     return df.sort_values(["GAME_DATE", "GAME_ID", "TEAM_ID"]).reset_index(drop=True)
 
@@ -106,12 +130,19 @@ def fetch_season(season: str = "2024-25") -> pd.DataFrame:
 
 
 def save_raw_data(df: pd.DataFrame, season: str) -> Path:
-    """Save validated source data without feature transformations."""
+    """Save validated source data safely without feature transformations."""
 
     RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     output_path = RAW_DATA_DIR / f"nba_team_game_logs_{season}.csv"
-    df.to_csv(output_path, index=False)
+    temp_path = output_path.with_suffix(".csv.tmp")
+
+    try:
+        df.to_csv(temp_path, index=False)
+        temp_path.replace(output_path)
+    except Exception:
+        temp_path.unlink(missing_ok=True)
+        raise
 
     return output_path
 

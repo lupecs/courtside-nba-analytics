@@ -1,8 +1,26 @@
+import pytest
 from fastapi.testclient import TestClient
 
+import courtside.api as api_module
 from courtside.api import app
 
 client = TestClient(app)
+
+@pytest.fixture(autouse=True)
+def use_original_test_seasons(monkeypatch):
+    """Limit API tests to the four baseline seasons."""
+    test_seasons = [
+        "1946-47",
+        "1979-80",
+        "1996-97",
+        "2025-26",
+    ]
+
+    test_data = api_module.nba_data[
+        api_module.nba_data["SEASON"].isin(test_seasons)
+    ].copy()
+
+    monkeypatch.setattr(api_module, "nba_data", test_data)
 
 
 def test_health_check():

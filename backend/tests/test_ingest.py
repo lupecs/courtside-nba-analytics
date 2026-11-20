@@ -24,6 +24,32 @@ def make_game_log():
         ]
     )
 
+def make_unplayed_game_log():
+    """Create a two-team game log for a canceled, unplayed game."""
+    return pd.DataFrame(
+        [
+            {
+                "GAME_ID": "0021201214",
+                "TEAM_ID": 1610612738,
+                "TEAM_NAME": "Boston Celtics",
+                "GAME_DATE": "2013-04-16",
+                "MATCHUP": "BOS vs. IND",
+                "WL": pd.NA,
+                "PTS": 0,
+                "MIN": 0,
+            },
+            {
+                "GAME_ID": "0021201214",
+                "TEAM_ID": 1610612754,
+                "TEAM_NAME": "Indiana Pacers",
+                "GAME_DATE": "2013-04-16",
+                "MATCHUP": "IND @ BOS",
+                "WL": pd.NA,
+                "PTS": 0,
+                "MIN": 0,
+            },
+        ]
+    )
 
 def test_validator_preserves_missing_historical_statistics():
     df = make_game_log()
@@ -83,4 +109,65 @@ def test_validator_rejects_empty_data():
     df = pd.DataFrame(columns=list(CORE_COLUMNS))
 
     with pytest.raises(ValueError, match="No game records"):
+        validate_game_logs(df, "2024-25")
+
+def test_save_raw_data_creates_csv(tmp_path, monkeypatch):
+    from courtside import ingest
+
+    monkeypatch.setattr(ingest, "RAW_DATA_DIR", tmp_path)
+
+    df = make_game_log()
+    output_path = ingest.save_raw_data(df, "2024-25")
+
+    assert output_path.exists()
+    assert output_path.name == "nba_team_game_logs_2024-25.csv"
+
+    saved_df = pd.read_csv(output_path)
+    assert len(saved_df) == 1
+    assert saved_df.loc[0, "PTS"] == 110
+
+    assert not output_path.with_suffix(".csv.tmp").exists()
+
+
+def test_save_raw_data_preserves_existing_file_on_write_failure(
+    tmp_path,
+    monkeypatch,
+):
+    from courtside import ingest
+
+    monkeypatch.setattr(ingest, "RAW_DATA_DIR", tmp_path)
+
+    output_path = tmp_path / "nba_team_game_logs_2024-25.csv"
+    output_path.write_text("existing data", encoding="utf-8")
+
+    def fail_to_csv(self, *args, **kwargs):
+        raise OSError("Simulated disk error")
+
+    monkeypatch.setattr(pd.DataFrame, "to_csv", fail_to_csv)
+
+    with pytest.raises(OSError, match="Simulated disk error"):
+        ingest.save_raw_data(make_game_log(), "2024-25")
+
+    assert output_path.read_text(encoding="utf-8") == "existing data"
+    assert not output_path.with_suffix(".csv.tmp").exists()
+
+def test_validator_marks_completed_games():
+    result = validate_game_logs(make_game_log(), "2024-25")
+
+    assert result["GAME_STATUS"].eq("COMPLETED").all()
+
+
+def test_validator_accepts_unplayed_game():
+    result = validate_game_logs(make_unplayed_game_log(), "2012-13")
+
+    assert len(result) == 2
+    assert result["GAME_STATUS"].eq("UNPLAYED").all()
+    assert result["WL"].isna().all()
+
+
+def test_validator_rejects_unexpected_missing_outcome():
+    df = make_game_log()
+    df.loc[0, "WL"] = pd.NA
+
+    with pytest.raises(ValueError, match="Unexpected game outcome values"):
         validate_game_logs(df, "2024-25")

@@ -53,10 +53,24 @@ def build_coverage_report(df: pd.DataFrame) -> pd.DataFrame:
     for season, season_df in df.groupby("SEASON", sort=True):
         total_records = len(season_df)
 
+        game_status = (
+            season_df["GAME_STATUS"]
+            if "GAME_STATUS" in season_df.columns
+            else pd.Series("COMPLETED", index=season_df.index)
+        )
+
         row = {
             "SEASON": season,
             "RECORDS": total_records,
             "GAMES": season_df["GAME_ID"].nunique(),
+            "COMPLETED_RECORDS": int(game_status.eq("COMPLETED").sum()),
+            "UNPLAYED_RECORDS": int(game_status.eq("UNPLAYED").sum()),
+            "COMPLETED_GAMES": int(
+                season_df.loc[game_status.eq("COMPLETED"), "GAME_ID"].nunique()
+            ),
+            "UNPLAYED_GAMES": int(
+                season_df.loc[game_status.eq("UNPLAYED"), "GAME_ID"].nunique()
+            ),
             "TEAMS": season_df["TEAM_ID"].nunique(),
             "START_DATE": season_df["GAME_DATE"].min(),
             "END_DATE": season_df["GAME_DATE"].max(),

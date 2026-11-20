@@ -49,7 +49,7 @@ def probe_season(season: str) -> None:
         print("\nMissing values:")
         print(df.isna().sum().to_string())
 
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001
         print(f"API request failed: {error}")
 
 

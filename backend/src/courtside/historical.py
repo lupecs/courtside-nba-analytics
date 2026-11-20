@@ -66,6 +66,7 @@ def collect_historical_data(
     end_year: int,
     max_attempts: int = 3,
     retry_delay: int = 5,
+    request_delay: int = 2,
 ) -> dict:
     """Download historical NBA seasons, skipping existing files and retrying failed requests.
 
@@ -74,6 +75,7 @@ def collect_historical_data(
         end_year (int): The ending year of the NBA seasons to download.
         max_attempts (int, optional): Maximum number of attempts to download each season. Defaults to 3.
         retry_delay (int, optional): Delay in seconds between retry attempts. Defaults to 5.
+        request_delay (int, optional): Delay in seconds between successful season downloads. Defaults to 2.
 
     Returns:
         dict: A dictionary containing the status of each season download.
@@ -84,6 +86,9 @@ def collect_historical_data(
 
     if retry_delay < 0:
         raise ValueError("retry_delay cannot be negative.")
+
+    if request_delay < 0:
+        raise ValueError("request_delay cannot be negative.")
 
     seasons = generate_seasons(start_year, end_year)
 
@@ -109,6 +114,11 @@ def collect_historical_data(
                 print(f"Successfully saved {season}: {output_path}")
 
                 results["downloaded"].append(season)
+
+                if index < total and request_delay > 0:
+                    print(f"Waiting {request_delay} seconds before next request...")
+                    time.sleep(request_delay)
+
                 break
 
             except Exception as error:  # noqa: BLE001
@@ -159,6 +169,13 @@ def load_historical_data() -> pd.DataFrame:
         ignore_index=True,
         sort=False,
     )
+
+    if "GAME_STATUS" not in historical_df.columns:
+        historical_df["GAME_STATUS"] = "COMPLETED"
+    else:
+        historical_df["GAME_STATUS"] = historical_df["GAME_STATUS"].fillna(
+            "COMPLETED"
+        )
 
     historical_df["GAME_DATE"] = pd.to_datetime(
         historical_df["GAME_DATE"],

@@ -228,3 +228,52 @@ def test_load_historical_data_rejects_missing_files(tmp_path, monkeypatch):
 
     with pytest.raises(FileNotFoundError):
         historical.load_historical_data()
+
+def test_collect_historical_data_paces_successful_downloads(monkeypatch):
+    from courtside import historical
+
+    waits = []
+
+    monkeypatch.setattr(historical, "is_season_downloaded", lambda season: False)
+    monkeypatch.setattr(historical, "fetch_season", lambda season: f"data-{season}")
+    monkeypatch.setattr(historical, "save_raw_data", lambda df, season: None)
+    monkeypatch.setattr(historical.time, "sleep", lambda seconds: waits.append(seconds))
+
+    results = historical.collect_historical_data(
+        2020,
+        2022,
+        request_delay=2,
+    )
+
+    assert len(results["downloaded"]) == 3
+    assert waits == [2, 2]
+
+
+def test_collect_historical_data_rejects_negative_request_delay():
+    from courtside import historical
+
+    with pytest.raises(ValueError, match="request_delay"):
+        historical.collect_historical_data(
+            2020,
+            2020,
+            request_delay=-1,
+        )
+
+
+def test_collect_historical_data_can_disable_request_pacing(monkeypatch):
+    from courtside import historical
+
+    waits = []
+
+    monkeypatch.setattr(historical, "is_season_downloaded", lambda season: False)
+    monkeypatch.setattr(historical, "fetch_season", lambda season: f"data-{season}")
+    monkeypatch.setattr(historical, "save_raw_data", lambda df, season: None)
+    monkeypatch.setattr(historical.time, "sleep", lambda seconds: waits.append(seconds))
+
+    historical.collect_historical_data(
+        2020,
+        2021,
+        request_delay=0,
+    )
+
+    assert waits == []
