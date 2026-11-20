@@ -19,6 +19,7 @@ dist/
 # Data
 data/raw/*
 data/processed/*
+!data/processed/nba_historical_matchup_features.csv
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
