@@ -111,3 +111,272 @@ def test_get_team_performance_invalid_season():
 
     assert response.status_code == 404
     assert "season" in response.json()["detail"].lower()
+
+def test_get_model_performance(monkeypatch):
+    """Return performance metrics for all predictive models."""
+
+    expected = {
+        "train_games": 100,
+        "test_games": 20,
+        "test_start_season": "2021-22",
+        "baseline_metrics": {"accuracy": 0.55},
+        "models": {
+            "Logistic Regression": {"metrics": {"accuracy": 0.62}},
+            "Random Forest": {"metrics": {"accuracy": 0.63}},
+            "Gradient Boosting": {"metrics": {"accuracy": 0.60}},
+        },
+    }
+
+    monkeypatch.setattr(
+        api_module,
+        "get_predictive_results",
+        lambda: expected,
+    )
+
+    response = client.get("/models/performance")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["train_games"] == 100
+    assert data["test_games"] == 20
+    assert data["baseline"]["accuracy"] == 0.55
+    assert len(data["models"]) == 3
+
+
+def test_get_model_calibration(monkeypatch):
+    """Return calibration tables for all predictive models."""
+
+    import pandas as pd
+
+    expected = {
+        "baseline_calibration": pd.DataFrame(
+            [
+                {
+                    "bin": "(0.9, 1.0]",
+                    "games": 20,
+                    "mean_predicted_probability": 1.0,
+                    "actual_home_win_rate": 0.55,
+                }
+            ]
+        ),
+        "models": {
+            name: {
+                "calibration": pd.DataFrame(
+                    [
+                        {
+                            "bin": "(0.5, 0.6]",
+                            "games": 10,
+                            "mean_predicted_probability": 0.55,
+                            "actual_home_win_rate": 0.50,
+                        }
+                    ]
+                )
+            }
+            for name in [
+                "Logistic Regression",
+                "Random Forest",
+                "Gradient Boosting",
+            ]
+        },
+    }
+
+    monkeypatch.setattr(
+        api_module,
+        "get_predictive_results",
+        lambda: expected,
+    )
+
+    response = client.get("/models/calibration")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data["baseline"]) == 1
+    assert len(data["models"]) == 3
+    assert data["models"]["Random Forest"][0]["games"] == 10
+
+def test_get_model_feature_importance(monkeypatch):
+    """Return feature importance for all predictive models."""
+
+    import pandas as pd
+
+    expected = {
+        name: pd.DataFrame(
+            [
+                {
+                    "feature": "HOME_LAST_10_PTS_FOR",
+                    "importance_mean": 0.03,
+                    "importance_std": 0.005,
+                }
+            ]
+        )
+        for name in [
+            "Logistic Regression",
+            "Random Forest",
+            "Gradient Boosting",
+        ]
+    }
+
+    monkeypatch.setattr(
+        api_module,
+        "get_feature_importance",
+        lambda: expected,
+    )
+
+    response = client.get("/models/feature-importance")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data) == 3
+    assert data["Logistic Regression"][0]["feature"] == (
+        "HOME_LAST_10_PTS_FOR"
+    )
+
+def test_get_historical_predictions(monkeypatch):
+    """Return paginated historical predictions."""
+
+    expected = {
+        "model": "Logistic Regression",
+        "season": "2024-25",
+        "total": 100,
+        "limit": 10,
+        "offset": 0,
+        "predictions": [
+            {
+                "GAME_ID": "001",
+                "SEASON": "2024-25",
+                "HOME_TEAM": "Boston Celtics",
+                "AWAY_TEAM": "New York Knicks",
+                "ACTUAL_HOME_WIN": 1,
+                "PREDICTED_HOME_WIN": 1,
+                "HOME_WIN_PROBABILITY": 0.72,
+            }
+        ],
+    }
+
+    monkeypatch.setattr(
+        api_module,
+        "get_historical_predictions",
+        lambda **kwargs: expected,
+    )
+
+    response = client.get(
+        "/predictions/historical",
+        params={
+            "model": "Logistic Regression",
+            "season": "2024-25",
+            "limit": 10,
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["total"] == 100
+    assert data["limit"] == 10
+    assert len(data["predictions"]) == 1
+
+
+def test_get_historical_predictions_invalid_model(monkeypatch):
+    """Return a client error for an unknown model."""
+
+    def raise_error(**kwargs):
+        raise ValueError("Unknown model: Invalid Model")
+
+    monkeypatch.setattr(
+        api_module,
+        "get_historical_predictions",
+        raise_error,
+    )
+
+    response = client.get(
+        "/predictions/historical",
+        params={"model": "Invalid Model"},
+    )
+
+    assert response.status_code == 400
+    assert "Unknown model" in response.json()["detail"]
+
+
+def test_create_matchup_prediction(monkeypatch):
+    expected = {
+        "home_team": "Boston Celtics",
+        "away_team": "New York Knicks",
+        "model": "Logistic Regression",
+        "predicted_winner": "Boston Celtics",
+        "predicted_home_win": 1,
+        "home_win_probability": 0.72,
+        "away_win_probability": 0.28,
+    }
+
+    monkeypatch.setattr(
+        api_module,
+        "predict_matchup",
+        lambda **kwargs: expected,
+    )
+
+    features = {
+        column: 0.5 for column in api_module.FEATURE_COLUMNS
+    }
+
+    response = client.post(
+        "/predictions",
+        json={
+            "home_team": "Boston Celtics",
+            "away_team": "New York Knicks",
+            "model": "Logistic Regression",
+            "features": features,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == expected
+
+
+def test_create_matchup_prediction_rejects_missing_features(monkeypatch):
+    response = client.post(
+        "/predictions",
+        json={
+            "home_team": "Boston Celtics",
+            "away_team": "New York Knicks",
+            "model": "Logistic Regression",
+            "features": {},
+        },
+    )
+
+    assert response.status_code == 400
+    assert "Missing required features" in response.json()["detail"]
+
+
+def test_create_matchup_prediction_rejects_unknown_model(monkeypatch):
+    def raise_unknown_model(**kwargs):
+        raise ValueError("Unknown model: Invalid Model")
+
+    monkeypatch.setattr(
+        api_module,
+        "predict_matchup",
+        raise_unknown_model,
+    )
+
+    features = {
+        column: 0.5 for column in api_module.FEATURE_COLUMNS
+    }
+
+    response = client.post(
+        "/predictions",
+        json={
+            "home_team": "Boston Celtics",
+            "away_team": "New York Knicks",
+            "model": "Invalid Model",
+            "features": features,
+        },
+    )
+
+    assert response.status_code == 400
+    assert "Unknown model" in response.json()["detail"]

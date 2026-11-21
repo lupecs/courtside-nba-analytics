@@ -4,6 +4,7 @@ from __future__ import annotations
 import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.impute import SimpleImputer
+from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
@@ -407,3 +408,36 @@ def compare_classification_models(
         ),
         "models": results,
     }
+
+def calculate_feature_importance(
+    model: Pipeline,
+    X_test: pd.DataFrame,
+    y_test: pd.Series,
+    n_repeats: int = 5,
+) -> pd.DataFrame:
+    """Calculate permutation importance using ROC-AUC."""
+
+    if n_repeats < 1:
+        raise ValueError("n_repeats must be at least 1.")
+
+    importance = permutation_importance(
+        model,
+        X_test,
+        y_test,
+        scoring="roc_auc",
+        n_repeats=n_repeats,
+        random_state=42,
+        n_jobs=-1,
+    )
+
+    return (
+        pd.DataFrame(
+            {
+                "feature": X_test.columns,
+                "importance_mean": importance.importances_mean,
+                "importance_std": importance.importances_std,
+            }
+        )
+        .sort_values("importance_mean", ascending=False)
+        .reset_index(drop=True)
+    )
