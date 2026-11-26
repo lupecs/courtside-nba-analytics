@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import TeamLogo from "./components/TeamLogo";
+import PredictiveAnalytics from "./components/PredictiveAnalytics";
+import StatTooltip from "./components/StatTooltip";
 
 import Plot from "react-plotly.js";
 
@@ -34,6 +36,7 @@ const navigation = [
   { label: "Season Explorer", image: "/icons/season-ticket.png" },
   { label: "Season Comparison", image: "/icons/season-comparison.png" },
   { label: "Era Analysis", image: "/icons/era-analysis.png" },
+  { label: "Predictive Analytics", icon: Activity },
 ];
 
 function BasketballMark() {
@@ -425,7 +428,13 @@ function App() {
                   <div className="panel-heading">
                     <div>
                       <p className="eyebrow">LEAGUE-WIDE TRENDS</p>
-                      <h2>Scoring Through the Eras</h2>
+                      <h2>
+                        Scoring Through the Eras{" "}
+                        <StatTooltip
+                          label=""
+                          description="Average points scored by each team per game across NBA seasons."
+                        />
+                      </h2>
                     </div>
 
                     <span className="panel-tag">HISTORICAL</span>
@@ -477,7 +486,9 @@ function App() {
                             zeroline: false,
                           },
                           yaxis: {
-                            title: { text: "Average Points per Team" },
+                            title: {
+                              text: "Average Points per Team",
+                            },
                             gridcolor: "rgba(255,255,255,0.08)",
                             zeroline: false,
                           },
@@ -540,19 +551,153 @@ function App() {
               </section>
 
               <section className="panel performance-panel">
-                <div className="panel-heading">
+                <div className="panel-heading performance-heading">
                   <div>
-                    <p className="eyebrow">TEAM ANALYTICS</p>
-                    <h2>Season Performance</h2>
+                    <p className="eyebrow">TEAM ANALYTICS </p>
+
+                    <h2>
+                      Season Performance{" "}
+                      <StatTooltip
+                        label=""
+                        description="Explore team standings, scoring and results across NBA history."
+                      />
+                    </h2>
+
+                    <p className="page-description">
+                      Explore team standings, scoring and results across NBA
+                      history.
+                    </p>
                   </div>
 
-                  <span className="panel-tag">COMING FROM API</span>
+                  <div className="season-select-control">
+                    <label htmlFor="dashboard-season-select">
+                      SELECT SEASON
+                    </label>
+                    <select
+                      id="dashboard-season-select"
+                      value={selectedSeason}
+                      onChange={(event) =>
+                        setSelectedSeason(event.target.value)
+                      }
+                      disabled={dashboardLoading || !availableSeasons}
+                    >
+                      {availableSeasons?.seasons.map((season) => (
+                        <option key={season} value={season}>
+                          {season}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                <div className="empty-state">
-                  Team standings and performance metrics will appear here once
-                  the API is connected.
+                <div className="standings-summary">
+                  <span>
+                    <strong>{selectedSeason}</strong> Regular Season
+                  </span>
+                  <span>
+                    {teamsLoading
+                      ? "Loading standings..."
+                      : `${teamPerformance.length} teams`}
+                  </span>
                 </div>
+
+                {teamsLoading ? (
+                  <div className="empty-state">Loading team standings...</div>
+                ) : teamsError ? (
+                  <div className="empty-state" role="alert">
+                    Unable to load standings: {teamsError}
+                  </div>
+                ) : teamPerformance.length === 0 ? (
+                  <div className="empty-state">
+                    No team performance data available for this season.
+                  </div>
+                ) : (
+                  <div className="standings-table-wrapper">
+                    <table className="standings-table">
+                      <th>
+                        <StatTooltip
+                          label="#"
+                          description="Team's position in the standings."
+                        />
+                      </th>
+                      <th>
+                        <StatTooltip
+                          label="TEAM"
+                          description="NBA team name."
+                        />
+                      </th>
+                      <th>
+                        <StatTooltip label="GP" description="Games played." />
+                      </th>
+                      <th>
+                        <StatTooltip label="W" description="Games won." />
+                      </th>
+                      <th>
+                        <StatTooltip label="L" description="Games lost." />
+                      </th>
+                      <th>
+                        <StatTooltip
+                          label="WIN %"
+                          description="Percentage of games won."
+                        />
+                      </th>
+                      <th>
+                        <StatTooltip
+                          label="PTS/G"
+                          description="Average points scored per game."
+                        />
+                      </th>
+                      <th>
+                        <StatTooltip
+                          label="PA/G"
+                          description="Average points allowed per game."
+                        />
+                      </th>
+                      <th>
+                        <StatTooltip
+                          label="+/-"
+                          description="Average point differential per game."
+                        />
+                      </th>
+
+                      <tbody>
+                        {teamPerformance.map((team, index) => (
+                          <tr key={team.TEAM_ID}>
+                            <td className="standings-rank">{index + 1}</td>
+                            <td className="standings-team">
+                              <span className="team-name-with-logo">
+                                {team.TEAM_NAME}
+                                <TeamLogo
+                                  teamId={team.TEAM_ID}
+                                  teamName={team.TEAM_NAME}
+                                  season={selectedSeason}
+                                />
+                              </span>
+                            </td>
+                            <td>{team.GP}</td>
+                            <td>{team.W}</td>
+                            <td>{team.L}</td>
+                            <td>{(team.WIN_PCT * 100).toFixed(1)}%</td>
+                            <td>{team.PTS.toFixed(1)}</td>
+                            <td>{team.PTS_ALLOWED.toFixed(1)}</td>
+                            <td
+                              className={
+                                team.POINT_DIFF > 0
+                                  ? "point-diff-positive"
+                                  : team.POINT_DIFF < 0
+                                    ? "point-diff-negative"
+                                    : ""
+                              }
+                            >
+                              {team.POINT_DIFF > 0 ? "+" : ""}
+                              {team.POINT_DIFF.toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </section>
             </>
           ) : activePage === "Season Comparison" ? (
@@ -1065,13 +1210,39 @@ function App() {
                       <tr>
                         <th>#</th>
                         <th>TEAM</th>
-                        <th>GP</th>
-                        <th>W</th>
-                        <th>L</th>
-                        <th>WIN %</th>
-                        <th>PTS/G</th>
-                        <th>PA/G</th>
-                        <th>+/-</th>
+                        <th>
+                          <StatTooltip label="GP" description="Games played" />
+                        </th>
+                        <th>
+                          <StatTooltip label="W" description="Wins" />
+                        </th>
+                        <th>
+                          <StatTooltip label="L" description="Losses" />
+                        </th>
+                        <th>
+                          <StatTooltip
+                            label="WIN %"
+                            description="Percentage of games won"
+                          />
+                        </th>
+                        <th>
+                          <StatTooltip
+                            label="PTS/G"
+                            description="Average points scored per game"
+                          />
+                        </th>
+                        <th>
+                          <StatTooltip
+                            label="PA/G"
+                            description="Average points allowed per game"
+                          />
+                        </th>
+                        <th>
+                          <StatTooltip
+                            label="+/-"
+                            description="Average scoring margin per game"
+                          />
+                        </th>
                       </tr>
                     </thead>
 
@@ -1114,6 +1285,8 @@ function App() {
                 </div>
               )}
             </section>
+          ) : activePage === "Predictive Analytics" ? (
+            <PredictiveAnalytics />
           ) : (
             <section className="panel section-placeholder">
               <div className="placeholder-icon">

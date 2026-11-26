@@ -1478,3 +1478,104 @@
   opacity: 0.65;
   text-align: center;
 }
+
+/* Compact basketball-stat tooltips */
+.stat-tooltip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  position: relative;
+  white-space: nowrap;
+}
+
+.stat-tooltip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted, #8b91a0);
+  cursor: help;
+  position: relative;
+}
+
+.stat-tooltip-popup {
+  display: none;
+  position: absolute;
+  z-index: 100;
+  bottom: calc(100% + 9px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 190px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  background: #20243a;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: center;
+  white-space: normal;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.stat-tooltip-icon:hover .stat-tooltip-popup,
+.stat-tooltip-icon:focus .stat-tooltip-popup {
+  display: block;
+}
+
+.stat-tooltip-icon:hover,
+.stat-tooltip-icon:focus {
+  color: var(--accent, #8f82c4);
+  outline: none;
+}
+
+/* Keep stat tooltips above the standings table */
+.standings-table th {
+  overflow: visible;
+}
+
+.standings-table th .stat-tooltip-icon {
+  position: relative;
+}
+
+.standings-table th .stat-tooltip-popup {
+  bottom: auto;
+  top: calc(100% + 9px);
+}
+.panel-heading h2 .stat-tooltip {
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+.panel-heading h2 .stat-tooltip-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Ensure chart heading tooltips remain visible */
+.panel-heading h2 .stat-tooltip {
+  display: inline-flex !important;
+  align-items: center;
+  vertical-align: middle;
+  margin-left: 5px;
+}
+
+.panel-heading h2 .stat-tooltip-icon {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  color: #9ba9bb;
+  opacity: 1;
+  visibility: visible;
+}
+
+.panel-heading h2 .stat-tooltip-icon svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.panel-heading h2 .stat-tooltip-icon:hover {
+  color: #f0a45b;
+}

@@ -3,6 +3,24 @@
 import pandas as pd
 
 
+def _get_completed_season_data(
+    df: pd.DataFrame,
+    season: str,
+) -> pd.DataFrame:
+    """Return played game records for a selected season."""
+
+    season_df = df.loc[df["SEASON"] == season].copy()
+
+    # Older datasets or test fixtures may not have GAME_STATUS.
+    if "GAME_STATUS" in season_df.columns:
+        season_df = season_df.loc[
+            season_df["GAME_STATUS"] == "COMPLETED"
+        ].copy()
+
+    return season_df
+
+
+
 def calculate_team_performance(
     df: pd.DataFrame,
     season: str,
@@ -23,7 +41,7 @@ def calculate_team_performance(
     if missing_columns:
         raise ValueError(f"Missing required columns: {sorted(missing_columns)}")
 
-    season_df = df.loc[df["SEASON"] == season].copy()
+    season_df = _get_completed_season_data(df, season)
 
     if season_df.empty:
         raise ValueError(f"No game data available for season {season}.")
@@ -93,7 +111,7 @@ def calculate_season_summary(df: pd.DataFrame) -> pd.DataFrame:
     summaries = []
 
     for season in sorted(df["SEASON"].unique()):
-        season_df = df.loc[df["SEASON"] == season].copy()
+        season_df = _get_completed_season_data(df, season)
 
         team_performance = calculate_team_performance(df, season)
 
@@ -187,10 +205,8 @@ def calculate_era_adjusted_team_performance(
 
     performance = calculate_team_performance(df, season)
 
-    league_average = df.loc[
-        df["SEASON"] == season,
-        "PTS",
-    ].mean()
+    season_df = _get_completed_season_data(df, season)
+    league_average = season_df["PTS"].mean()
 
     performance["LEAGUE_AVG_PTS"] = round(league_average, 2)
 

@@ -86,3 +86,105 @@ export function getEraAdjustedTeamPerformance(season: string) {
     `/seasons/${encodeURIComponent(season)}/teams/era-adjusted`,
   );
 }
+
+export type PredictiveModelName =
+  | "Logistic Regression"
+  | "Random Forest"
+  | "Gradient Boosting";
+
+export interface ClassificationMetrics {
+  accuracy: number;
+  precision: number;
+  recall: number;
+  f1: number;
+  roc_auc: number;
+  brier_score: number;
+  log_loss: number;
+  confusion_matrix: number[][];
+}
+
+export interface ModelPerformanceResponse {
+  train_games: number;
+  test_games: number;
+  test_start_season: string;
+  baseline: ClassificationMetrics;
+  models: Record<PredictiveModelName, ClassificationMetrics>;
+}
+
+export interface CalibrationBin {
+  bin: string;
+  games: number;
+  mean_predicted_probability: number;
+  actual_home_win_rate: number;
+}
+
+export interface ModelCalibrationResponse {
+  baseline: CalibrationBin[];
+  models: Record<PredictiveModelName, CalibrationBin[]>;
+}
+
+export interface FeatureImportance {
+  feature: string;
+  importance_mean: number;
+  importance_std: number;
+}
+
+export type FeatureImportanceResponse = Record<
+  PredictiveModelName,
+  FeatureImportance[]
+>;
+
+export interface HistoricalPrediction {
+  GAME_ID: number;
+  GAME_DATE: string;
+  SEASON: string;
+  HOME_TEAM: string;
+  AWAY_TEAM: string;
+  HOME_PTS: number;
+  AWAY_PTS: number;
+  ACTUAL_HOME_WIN: number;
+  PREDICTED_HOME_WIN: number;
+  HOME_WIN_PROBABILITY: number;
+}
+
+export interface HistoricalPredictionsResponse {
+  model: PredictiveModelName;
+  season: string | null;
+  total: number;
+  limit: number;
+  offset: number;
+  predictions: HistoricalPrediction[];
+}
+
+export function getModelPerformance() {
+  return apiGet<ModelPerformanceResponse>("/models/performance");
+}
+
+export function getModelCalibration() {
+  return apiGet<ModelCalibrationResponse>("/models/calibration");
+}
+
+export function getFeatureImportance() {
+  return apiGet<FeatureImportanceResponse>("/models/feature-importance");
+}
+
+export function getHistoricalPredictions(
+  model: PredictiveModelName = "Logistic Regression",
+  season?: string,
+  limit = 25,
+  offset = 0,
+) {
+  const params = new URLSearchParams({
+    model,
+    limit: String(limit),
+    offset: String(offset),
+  });
+
+  if (season) {
+    params.set("season", season);
+  }
+
+  return apiGet<HistoricalPredictionsResponse>(
+    `/predictions/historical?${params.toString()}`,
+  );
+}
